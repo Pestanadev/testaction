@@ -1,0 +1,11 @@
+name: Action Mostrar data do push
+
+on:
+  push:
+
+jobs:
+  show-date-time:
+    runs-on: ubuntu-latest
+    steps:
+      - name: tempo correto
+        run: date
