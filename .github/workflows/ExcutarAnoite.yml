@@ -1,0 +1,9 @@
+name: Noite
+on:
+  schedule:
+    - cron: "0 3 * * *"  # roda todo dia às 00h (horário BR)
+jobs:
+  night:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "🌙 Rodando tarefa noturna $(date)"
