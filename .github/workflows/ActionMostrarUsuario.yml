@@ -1,0 +1,16 @@
+# .github/workflows/comment-user.yml
+name: Comentar usuário do push
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  comment-user:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Comentar no commit com o nome do usuário
+        uses: peter-evans/commit-comment@v3
+        with:
+          body: "👋 O push foi feito por **${{ github.actor }}**."
