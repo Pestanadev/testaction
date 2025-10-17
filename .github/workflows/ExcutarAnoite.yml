@@ -11,5 +11,5 @@ jobs:
     steps:
       - name: Executar tarefa noturna
         run: |
-          echo "🌙 Executando tarefa noturna..."
+          echo "Executando tarefa noturna..."
           date
