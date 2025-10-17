@@ -1,9 +1,15 @@
-name: Noite
+name: Rodar apenas à noite
+
 on:
   schedule:
-    - cron: "0 3 * * *"  # roda todo dia às 00h (horário BR)
+    # Executa todo dia às 22h (UTC) → 19h no horário de Brasília (UTC-3)
+    - cron: "0 22 * * *"
+
 jobs:
-  night:
+  night-job:
     runs-on: ubuntu-latest
     steps:
-      - run: echo "🌙 Rodando tarefa noturna $(date)"
+      - name: Executar tarefa noturna
+        run: |
+          echo "🌙 Executando tarefa noturna..."
+          date
