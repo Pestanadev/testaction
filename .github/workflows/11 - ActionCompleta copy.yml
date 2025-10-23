@@ -50,12 +50,17 @@ jobs:
           FILES_Z=""
           ZEROS="$(printf '0%.0s' {1..40})"
           if [ -z "$BASE" ] || [ "$BASE" = "$ZEROS" ]; then
-            FILES_Z="$(git ls-tree -r -z --name-only "$HEAD" || true)"
+            # List all files in repository for first push
+            FILES_Z="$(git ls-files -z)"
           else
             # se base não existir localmente, tentar buscar
             git fetch --no-tags --depth=1 origin "$BASE" "$HEAD" || true
-            FILES_Z="$(git diff --name-only -z "$BASE" "$HEAD" || true)"
+            FILES_Z="$(git diff --name-only -z "$BASE" "$HEAD" 2>/dev/null || git ls-files -z)"
           fi
+
+          # Debug output
+          echo "Found files:"
+          echo "$FILES_Z" | tr '\0' '\n'
 
           # inicializar contadores
           html_total=0
