@@ -12,12 +12,16 @@ jobs:
   comment-user:
     runs-on: ubuntu-latest
     steps:
-      - name: Fazer checkout do código
-        uses: actions/checkout@v4
+      - name: Fazer checkout do código # necessário para ações que interagem com o repositório
+        uses: actions/checkout@v4 # fazer checkout do código
 
-      - name: Comentar no commit quem fez o push
-        env:
-          ACTOR: ${{ github.actor }}
-        run: |
-          BODY="👋 O push foi feito por **${ACTOR}**."
+      - name: Comentar no commit quem fez o push # comentar no commit quem fez o push
+        uses: actions/github-script@v6 # usar ação para comentar
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }} # token para autenticação 
+          script: |
+            const actor = context.actor;
+            const sha = context.sha;
+            const body = `👋 O push foi feito por **${actor}**.`; 
+            });
         
