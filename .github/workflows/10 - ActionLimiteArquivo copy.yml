@@ -1,0 +1,16 @@
+name: Rodar aos sábados
+
+on:
+  schedule:
+    # Executa todo sábado às 12h (UTC) → 9h no horário de Brasília (UTC-3)
+    - cron: "0 12 * * 6"
+
+jobs:
+  saturday-job:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Executar tarefa de sábado
+        if: ${{ github.event_name == 'schedule' }}
+        run: |
+          echo "Executando tarefa de sábado..."
+          date

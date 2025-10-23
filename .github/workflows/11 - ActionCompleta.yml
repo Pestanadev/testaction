@@ -1,0 +1,25 @@
+name: Contar arquivos - Meia Noite
+
+on:
+  schedule:
+    - cron: '0 0 * * *'  # todo dia à meia-noite (UTC)
+  workflow_dispatch: {}   # permite disparo manual
+
+jobs:
+  contar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fazer checkout do repositório
+        uses: actions/checkout@v4
+
+      - name: Contar arquivos (ignora .git)
+        run: |
+          COUNT=$(find . -type f -not -path "./.git/*" | wc -l)
+          echo "Número de arquivos: $COUNT"
+          echo "$COUNT" > file_count.txt
+
+      - name: Publicar contagem como artefato
+        uses: actions/upload-artifact@v4
+        with:
+          name: contagem-arquivos
+          path: file_count.txt

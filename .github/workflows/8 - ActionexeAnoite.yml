@@ -10,6 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Executar tarefa noturna
+        if: github.event_name == 'schedule'  # Condição para executar apenas em eventos de agendamento
         run: |
           echo "Executando tarefa noturna..."
           date

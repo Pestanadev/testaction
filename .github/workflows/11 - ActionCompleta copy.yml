@@ -1,0 +1,161 @@
+name: Contar HTML/CSS/JS (sequência e total)
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Contar arquivos e mostrar sequência
+        id: count-files
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BEFORE: ${{ github.event.before }}
+          SHA: ${{ github.sha }}
+          PR_BASE: ${{ github.event.pull_request.base.sha || '' }}
+          PR_HEAD: ${{ github.event.pull_request.head.sha || '' }}
+          ACTOR: ${{ github.actor }}
+        run: |
+          set -eo pipefail
+
+          # determinar base/head para diff
+          if [ "${EVENT_NAME}" = "pull_request" ] && [ -n "${PR_BASE}" ]; then
+            BASE="${PR_BASE}"
+            HEAD="${PR_HEAD}"
+          else
+            BASE="${BEFORE}"
+            HEAD="${SHA}"
+          fi
+
+          # obter commit info (fallbacks se HEAD vazio)
+          if [ -n "$HEAD" ]; then
+            COMMITTER="$(git show -s --format='%an <%ae>' "$HEAD" 2>/dev/null || echo "${ACTOR}")"
+            COMMIT_DATE="$(git show -s --format='%cI' "$HEAD" 2>/dev/null || date -u -Iseconds)"
+          else
+            COMMITTER="${ACTOR}"
+            COMMIT_DATE="$(date -u -Iseconds)"
+          fi
+
+          # listar arquivos modificados entre base e head (preserve order). usar -z para nomes com espaços.
+          FILES_Z=""
+          ZEROS="$(printf '0%.0s' {1..40})"
+          if [ -z "$BASE" ] || [ "$BASE" = "$ZEROS" ]; then
+            FILES_Z="$(git ls-tree -r -z --name-only "$HEAD" || true)"
+          else
+            # se base não existir localmente, tentar buscar
+            git fetch --no-tags --depth=1 origin "$BASE" "$HEAD" || true
+            FILES_Z="$(git diff --name-only -z "$BASE" "$HEAD" || true)"
+          fi
+
+          # inicializar contadores
+          html_total=0
+          css_total=0
+          js_total=0
+
+          max_html=0
+          max_css=0
+          max_js=0
+          max_any=0
+
+          prev=""
+          run_count=0
+
+          ordered_files=()
+          # iterar preservando ordem
+          if [ -n "$FILES_Z" ]; then
+            while IFS= read -r -d '' file; do
+              ordered_files+=("$file")
+              ext="${file##*.}"
+              case "${ext,,}" in
+                html|htm)
+                  type="html"
+                  html_total=$((html_total+1))
+                  ;;
+                css)
+                  type="css"
+                  css_total=$((css_total+1))
+                  ;;
+                js)
+                  type="js"
+                  js_total=$((js_total+1))
+                  ;;
+                *)
+                  type="other"
+                  ;;
+              esac
+
+              if [ "$type" = "$prev" ]; then
+                run_count=$((run_count+1))
+              else
+                run_count=1
+                prev="$type"
+              fi
+
+              case "$type" in
+                html) if [ $run_count -gt $max_html ]; then max_html=$run_count; fi ;;
+                css)  if [ $run_count -gt $max_css ]; then max_css=$run_count; fi ;;
+                js)   if [ $run_count -gt $max_js ]; then max_js=$run_count; fi ;;
+              esac
+
+              if { [ "$type" = "html" ] || [ "$type" = "css" ] || [ "$type" = "js" ]; } && [ $run_count -gt $max_any ]; then
+                max_any=$run_count
+              fi
+
+            done < <(printf '%s' "$FILES_Z")
+          fi
+
+          # preparar lista ordenada (top-down) como string separada por |
+          if [ ${#ordered_files[@]} -eq 0 ]; then
+            ordered_list="(nenhum arquivo listado)"
+          else
+            # limitar saída para evitar linhas muito longas (opcional): não limito aqui
+            sep=""
+            ordered_list=""
+            for f in "${ordered_files[@]}"; do
+              ordered_list+="${sep}${f}"
+              sep=" | "
+            done
+          fi
+
+          # saída legível no log
+          echo "Date: $COMMIT_DATE"
+          echo "User: $COMMITTER"
+          echo "Total HTML: $html_total, CSS: $css_total, JS: $js_total"
+          echo "Arquivos (ordem do diff): $ordered_list"
+          echo "Maior sequência contínua por tipo -> HTML: $max_html, CSS: $max_css, JS: $max_js"
+          echo "Maior sequência contínua geral (entre HTML/CSS/JS): $max_any"
+
+          # exportar outputs para steps seguintes
+          {
+            echo "date=$COMMIT_DATE"
+            echo "user=$COMMITTER"
+            echo "html_total=$html_total"
+            echo "css_total=$css_total"
+            echo "js_total=$js_total"
+            echo "ordered_list<<EOF"
+            printf '%s\n' "$ordered_list"
+            echo "EOF"
+            echo "max_html=$max_html"
+            echo "max_css=$max_css"
+            echo "max_js=$max_js"
+            echo "max_any=$max_any"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Exemplo de uso dos outputs
+        run: |
+          echo "Data: ${{ steps.count-files.outputs.date }}"
+          echo "Usuário: ${{ steps.count-files.outputs.user }}"
+          echo "HTML: ${{ steps.count-files.outputs.html_total }}, CSS: ${{ steps.count-files.outputs.css_total }}, JS: ${{ steps.count-files.outputs.js_total }}"
+          echo "Maior sequência (qualquer): ${{ steps.count-files.outputs.max_any }}"
+          echo "Arquivos (ordem):"
+          echo "${{ steps.count-files.outputs.ordered_list }}"
